@@ -5,14 +5,14 @@
  */
 
 
-#include <stdio.h>
-#include <string.h>
+
+#include <stdbool.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <wait.h>
+#include <stdio.h>
+#include <string.h>
 
-#define _CRT_SECURE_NO_WARNINGS
 #define MAX_CHARS 256
 #define MAX_WORD 8
 #define DELIMITER " "
@@ -25,8 +25,6 @@ struct Task {
     struct Task *next;
 };
 
-struct Task *head = NULL;
-struct Task *p = NULL;
 
 void runShell();
 
@@ -46,6 +44,9 @@ void parent(bool wait, int pid);
 
 void child(char **lexered);
 
+struct Task *head = NULL;
+struct Task *p = NULL;
+
 void showJobs();
 
 void addJob(struct Task *t);
@@ -58,7 +59,6 @@ int main(int argc, char **argv) {
 }
 
 void runShell() {
-
     char *input;
     char **lexered;
     bool hasNext = true;
@@ -69,8 +69,6 @@ void runShell() {
         free(input);
         free(lexered);
     }
-
-
 }
 
 char *getInput() {
@@ -127,21 +125,26 @@ char **getLexer(char *input) {
 }
 
 bool sendToExe(char **lexered) {
-    bool wait = waitingCheck(lexered);
+    bool isWait = waitingCheck(lexered);
     pid_t pid;
     pid = fork();
     if (pid == -1) {//Error case
         perror("ERROR IN FORK");
     } else if (pid == 0) {
+        printf("child\n");
         child(lexered);
-        exit(1);
-    } else {
-        parent(wait, pid);
+        printf("endOfChild\n");
+    } else if (pid > 0) {
+        parent(isWait, pid);
+
     }
     return true;
 }
 
 bool waitingCheck(char **lexered) {
+    if (lexered == NULL || lexered[0] == NULL) {
+        return false;
+    }
     int i = 0;
     while (lexered[i] != NULL) {
         i++;
@@ -155,7 +158,7 @@ bool waitingCheck(char **lexered) {
 }
 
 void dontWait() {
-
+    printf("D-WAIT\n");
 }
 
 void waitToChild(int pid) {
@@ -177,21 +180,42 @@ void parent(bool wait, int pid) {
 }
 
 void child(char **lexered) {
+    printf("ok");
+    struct Task *t;
+    t->name = lexered[0];
+    t->pid = getpid();
+    printf("ok2");
+    addJob(t);
+    printf("ok3");
     if (lexered[0] == "jobs") {
+        printf("ok4");
+        removeJob(t);
+        printf("ok5");
         showJobs();
+        printf("ok6");
+        exit(4);
+
+    } else if (lexered[0] == "cd") {
+
     } else if (execvp(lexered[0], lexered) == -1) {
         perror("ERROR IN EXE");
-    } else {
-        struct Task* t;
-        t->name = lexered[0];
-        t->pid = getpid();
-        addJob(t);
     }
+    printf("ok7");
+    removeJob(t);
+    printf("ok8");
     exit(3);
 }
 
 void showJobs() {
+    struct Task *t = head;
+    if (t == NULL) {
+        printf("there isnt jobs");
 
+    }
+    while (t != NULL) {
+        printf("%d %s\n", t->pid, t->name);
+        t = t->next;
+    }
 }
 
 void addJob(struct Task *newT) {
