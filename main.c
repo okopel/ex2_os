@@ -206,12 +206,13 @@ void child(char **lexered) {
 
     } else if (strcmp(lexered[0], "exit") == 0) {
         exitFunc();
-    } else if (strcmp(lexered[0], "man") == 0) {
+    } /*else if (strcmp(lexered[0], "man") == 0) {
         printf("MAN\n");
         manFunc(lexered);
         printf("MAN\n");
 
-    } else if (execvp(lexered[0], lexered) == -1) {
+    } */
+    else if (execvp(lexered[0], lexered) == -1) {
         fprintf(stderr, "Error in system call\n");
     }
 }
@@ -293,7 +294,7 @@ void cdFunc(char *path) {
 void exitFunc() {
     exit(1);
 }
-
+/*
 void manFunc(char **lexered) {
     printf("d\n");
     char **newLex;
@@ -309,4 +310,4 @@ void manFunc(char **lexered) {
         fprintf(stderr, "Error in system call\n");
     }
 
-}
+}*/
