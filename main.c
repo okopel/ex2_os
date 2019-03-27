@@ -13,10 +13,10 @@
 #include <string.h>
 
 #define MAX_CHARS 256
-#define MAX_WORD 8
+#define MAX_WORD 32
 #define DELIMITER " "
 #define WAITING_DELIMITER '&'
-#define MAX_JOBS 50
+#define MAX_JOBS 512
 struct Task {
     char *name;
     int pid;
@@ -24,6 +24,7 @@ struct Task {
 
 struct Task jobs[MAX_JOBS];
 
+int pos = MAX_JOBS;
 
 void runShell();
 
@@ -51,10 +52,14 @@ void removeJob(char *name, int pid);
 
 int orderJobs();
 
-void cdFunc();
+void cdFunc(char *path);
+
+void exitFunc();
+
+void manFunc(char **lexered);
+
 
 int main(int argc, char **argv) {
-//    jobPos = 0;
     runShell();
     return 0;
 }
@@ -65,7 +70,6 @@ void runShell() {
     bool hasNext = true;
     int jobPos = 0;
     while (hasNext) {
-
         input = getInput();
         lexered = getLexer(input);
         hasNext = sendToExe(jobPos, lexered);
@@ -82,17 +86,18 @@ char *getInput() {
         perror("BAD MALLOC");
     }
     char c;
-    int pos = 0;
+    int posi = 0;
+    printf(">");
     while (true) {
         c = getchar();
         if (c == '\n' || c == EOF) {
-            input[pos] = '\0';
+            input[posi] = '\0';
             return input;
         } else {
-            input[pos] = c;
-            pos++;
+            input[posi] = c;
+            posi++;
         }
-        if (pos == maxLen) {
+        if (posi == maxLen) {
             maxLen += MAX_CHARS;
             input = realloc(input, maxLen);
             if (!input) {
@@ -108,13 +113,13 @@ char **getLexer(char *input) {
         perror("BAD MALLOC IN LEXER");
     }
     int maxWord = MAX_WORD;
-    int pos = 0;
+    int posi = 0;
     char *tmp = strtok(input, DELIMITER);
 
     while (tmp) {
-        lexered[pos] = tmp;
-        pos++;
-        if (pos == maxWord) {
+        lexered[posi] = tmp;
+        posi++;
+        if (posi == maxWord) {
             maxWord += MAX_WORD;
             lexered = realloc(lexered, maxWord);
             if (!lexered) {
@@ -123,17 +128,23 @@ char **getLexer(char *input) {
         }
         tmp = strtok(NULL, DELIMITER);
     }
-    lexered[pos] = NULL;
+    lexered[posi] = NULL;
 
     return lexered;
 }
 
 bool sendToExe(int index, char **lexered) {
+    if (lexered[0] == NULL) {
+        return true;
+    }
     bool isWait = waitingCheck(lexered);
     if (strcmp(lexered[0], "jobs") == 0) {
         showJobs();
         return true;
+    } else if (strcmp(lexered[0], "exit") == 0) {
+        return false;
     }
+
     pid_t pid;
     pid = fork();
     if (pid == -1) {//Error case
@@ -170,18 +181,15 @@ void dontWait(char *name, int pid) {
 }
 
 void waitToChild(int pid) {
-    //   printf("WAIT\n");
-    // pid_t wpid;
     int status;
-
     do {
-        /* wpid =*/ waitpid(pid, &status, WUNTRACED);
+        waitpid(pid, &status, WUNTRACED);
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
 }
 
 void parent(int index, bool wait, char *name, int pid) {
     addJob(index, strdup(name), pid);
-    //printf("child PID=%d\n", pid);
+    printf("%d\n", pid);
     if (!wait) {
         waitToChild(pid);
         removeJob(strdup(name), pid);
@@ -192,14 +200,24 @@ void parent(int index, bool wait, char *name, int pid) {
 
 void child(char **lexered) {
     if (strcmp(lexered[0], "cd") == 0) {
-        cdFunc();
+        if (lexered[1] != NULL) {
+            cdFunc(lexered[1]);
+        }
+
+    } else if (strcmp(lexered[0], "exit") == 0) {
+        exitFunc();
+    } else if (strcmp(lexered[0], "man") == 0) {
+        printf("MAN\n");
+        manFunc(lexered);
+        printf("MAN\n");
+
     } else if (execvp(lexered[0], lexered) == -1) {
-        perror("ERROR IN EXE\n");
+        fprintf(stderr, "Error in system call\n");
     }
 }
 
 void showJobs() {
-    for (int i = 0; i < MAX_JOBS; i++) {
+    for (int i = 0; i < pos; i++) {
         if (jobs[i].name == NULL || jobs[i].pid == 0) {
             continue;
         }
@@ -214,17 +232,18 @@ void showJobs() {
 }
 
 void addJob(int jobPos, char *name, int pid) {
-    if (jobPos < MAX_JOBS) {
+    if (jobPos < pos) {
         jobs[jobPos].name = strdup(name);
         jobs[jobPos].pid = pid;
     } else {
         int newJobPos = orderJobs();
+        printf("%d\n", newJobPos);
         addJob(newJobPos, strdup(name), pid);
     }
 }
 
 void removeJob(char *name, int pid) {
-    for (int i = 0; i < MAX_JOBS; i++) {
+    for (int i = 0; i < pos; i++) {
         if (jobs[i].name == NULL) {
             continue;
         }
@@ -240,9 +259,7 @@ void removeJob(char *name, int pid) {
 
 int orderJobs() {
     printf("!");
-    //return 5;
-    //  printf("orderJobs\n");
-    for (int i = 0; i < MAX_JOBS; i++) {
+    for (int i = 0; i < pos; i++) {
         if (jobs[i].name == NULL) {
             continue;
         }
@@ -255,7 +272,7 @@ int orderJobs() {
         }
     }
     printf("!");
-    int jobIndex = MAX_JOBS;
+    int jobIndex = pos;
     while (jobIndex > 0) {
         printf("!");
         if (jobs[jobIndex].name != NULL) {
@@ -263,9 +280,33 @@ int orderJobs() {
         }
         jobIndex--;
     }
-    //printf("EndOfOrder\n");
+    printf("EndOfOrder\n");
 }
 
-void cdFunc() {
-    printf("CD\n");//todo
+void cdFunc(char *path) {
+    int ret = chdir(path);
+    if (ret) {
+        fprintf(stderr, "Error in system call\n");
+    }
+}
+
+void exitFunc() {
+    exit(1);
+}
+
+void manFunc(char **lexered) {
+    printf("d\n");
+    char **newLex;
+    int x = 0, i = 1;
+    newLex[x++] = strdup("man");
+    newLex[x++] = strdup("-P");
+    newLex[x++] = strdup("cat");
+    while (lexered[i] != NULL) {
+        newLex[x++] = strdup(lexered[i++]);
+    }
+    printf("!%s! %s! %s!", newLex[0], newLex[1], newLex[2]);
+    if (execvp(newLex[0], newLex) == -1) {
+        fprintf(stderr, "Error in system call\n");
+    }
+
 }
