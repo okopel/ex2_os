@@ -65,13 +65,13 @@ void runShell() {
     bool hasNext = true;
     int jobPos = 0;
     while (hasNext) {
-        jobPos++;
+
         input = getInput();
         lexered = getLexer(input);
-        hasNext = sendToExe(jobPos - 1, lexered);
+        hasNext = sendToExe(jobPos, lexered);
         free(input);
         free(lexered);
-
+        jobPos++;
     }
 }
 
@@ -130,10 +130,15 @@ char **getLexer(char *input) {
 
 bool sendToExe(int index, char **lexered) {
     bool isWait = waitingCheck(lexered);
+    if (strcmp(lexered[0], "jobs") == 0) {
+        showJobs();
+        return true;
+    }
     pid_t pid;
     pid = fork();
     if (pid == -1) {//Error case
         perror("ERROR IN FORK\n");
+        exit(1);
     } else if (pid > 0) {
         parent(index, isWait, strdup(lexered[0]), pid);
     } else if (pid == 0) {
@@ -160,10 +165,14 @@ bool waitingCheck(char **lexered) {
 }
 
 void dontWait(char *name, int pid) {
-    printf("D-WAIT\n");
+    printf("DONT-WAIT-CASE %d\n", pid);
     if (waitpid(pid, NULL, WNOHANG != 0)) {
-        removeJob(name, pid);
+        printf("1\n");
+        removeJob(strdup(name), pid);
+        printf("2\n");
     }
+    printf("3\n");
+
 }
 
 void waitToChild(int pid) {
@@ -178,13 +187,16 @@ void waitToChild(int pid) {
 
 void parent(int index, bool wait, char *name, int pid) {
     addJob(index, strdup(name), pid);
-    printf("PID=%d\n", pid);
+    printf("child PID=%d\n", pid);
     if (!wait) {
         waitToChild(pid);
+        printf("!!\t");
         removeJob(strdup(name), pid);
     } else {
+        printf("??\t");
         dontWait(name, pid);
     }
+    printf("_______________");
 }
 
 void child(char **lexered) {
@@ -199,9 +211,10 @@ void child(char **lexered) {
 
 void showJobs() {
     for (int i = 0; i < MAX_JOBS; i++) {
-        if (jobs[i].name == NULL) {
+        if (jobs[i].name == NULL || jobs[i].pid == 0) {
             continue;
         }
+
         if ((jobs[i].pid != 0) && (jobs[i].name != NULL)) {
             printf("%d)%d %s\n", i, jobs[i].pid, jobs[i].name);
         }
@@ -223,6 +236,7 @@ void removeJob(char *name, int pid) {
         if (jobs[i].name == NULL) {
             continue;
         }
+        printf("%d)~%d~(%d,%d)\n", i, jobs[i].pid == pid, pid, jobs[i].pid);
         if (jobs[i].pid == pid) {
             jobs[i].name = "";
             jobs[i].pid = 0;
