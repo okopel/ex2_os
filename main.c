@@ -24,7 +24,7 @@ struct Task {
 };
 
 struct Task jobs[MAX_JOBS];
-int jobPos;
+
 
 void runShell();
 
@@ -32,7 +32,7 @@ char *getInput();
 
 char **getLexer(char *input);
 
-bool sendToExe(char **lexered);
+bool sendToExe(int index, char **lexered);
 
 bool waitingCheck(char **lexered);
 
@@ -40,22 +40,22 @@ void waitToChild(int pid);
 
 void dontWait();
 
-void parent(bool wait, int pid);
+void parent(int index, bool wait, char *name, int pid);
 
 void child(char **lexered);
 
 void showJobs();
 
-void addJob(char *name, int pid);
+void addJob(int jobPos, char *name, int pid);
 
 void removeJob(char *name, int pid);
 
-void orderJobs();
+int orderJobs();
 
 void cdFunc();
 
 int main(int argc, char **argv) {
-    jobPos = 0;
+//    jobPos = 0;
     runShell();
     return 0;
 }
@@ -64,17 +64,22 @@ void runShell() {
     char *input;
     char **lexered;
     bool hasNext = true;
+    int jobPos = 0;
     while (hasNext) {
+        jobPos++;
         input = getInput();
         lexered = getLexer(input);
-        hasNext = sendToExe(lexered);
+        hasNext = sendToExe(jobPos - 1, lexered);
+        printf("~%d~\n", jobPos);
         free(input);
         free(lexered);
+
     }
 }
 
 char *getInput() {
     char *input = malloc(sizeof(char) * MAX_CHARS);
+
     int maxLen = MAX_CHARS;
     if (!input) {
         perror("BAD MALLOC");
@@ -126,18 +131,17 @@ char **getLexer(char *input) {
     return lexered;
 }
 
-bool sendToExe(char **lexered) {
+bool sendToExe(int index, char **lexered) {
     bool isWait = waitingCheck(lexered);
     pid_t pid;
     pid = fork();
     if (pid == -1) {//Error case
-        perror("ERROR IN FORK");
+        perror("ERROR IN FORK\n");
     } else if (pid > 0) {
-        parent(isWait, pid);
+        parent(index, isWait, strdup(lexered[0]), pid);
     } else if (pid == 0) {
-        printf("child\n");
         child(lexered);
-        printf("endOfChild\n");
+        exit(1);
     }
     return true;
 }
@@ -171,7 +175,8 @@ void waitToChild(int pid) {
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
 }
 
-void parent(bool wait, int pid) {
+void parent(int index, bool wait, char *name, int pid) {
+    addJob(index, strdup(name), pid);
     printf("PID=%d\n", pid);
     if (!wait) {
         dontWait();
@@ -181,41 +186,43 @@ void parent(bool wait, int pid) {
 }
 
 void child(char **lexered) {
-    addJob(lexered[0], getpid());
+//    addJob(lexered[0], getpid());
     if (strcmp(lexered[0], "jobs") == 0) {
-        printf("JOBS!!\n");
-        removeJob(lexered[0], getpid());
         showJobs();
-        //  exit(4);
     } else if (strcmp(lexered[0], "cd") == 0) {
         cdFunc();
     } else if (execvp(lexered[0], lexered) == -1) {
-        perror("ERROR IN EXE");
+        perror("ERROR IN EXE\n");
     }
-    removeJob(lexered[0], getpid());
-    //exit(3);
+    removeJob(strdup(lexered[0]), getpid());
+
 }
 
 void showJobs() {
     printf("showJobs\n");
     orderJobs();
     for (int i = 0; i < MAX_JOBS; i++) {
-        if (jobs[i].pid != 0) {
+        if (jobs[i].name == NULL) {
+            continue;
+        }
+        if ((jobs[i].pid != 0) && (jobs[i].name != NULL)) {
             printf("%d)%d %s\n", i, jobs[i].pid, jobs[i].name);
         }
     }
     printf("endOfShowJobs\n");
 }
 
-void addJob(char *name, int pid) {
+void addJob(int jobPos, char *name, int pid) {
     if (jobPos < MAX_JOBS) {
+
         jobs[jobPos].name = strdup(name);
         jobs[jobPos].pid = pid;
-        jobPos++;
-        printf("JOB created in %d\n", jobPos);
+        printf("JOB created in (%d) with name:%s pid:%d\n", jobPos, strdup(jobs[jobPos].name), jobs[jobPos].pid);
+
+
     } else {
-        orderJobs();
-        addJob(name, pid);
+        int newJobPos = orderJobs();
+        addJob(newJobPos, strdup(name), pid);
     }
 }
 
@@ -233,8 +240,8 @@ void removeJob(char *name, int pid) {
     printf("There isnt job to remove\n");
 }
 
-void orderJobs() {
-    return;
+int orderJobs() {
+    return 5;
     printf("orderJobs\n");
     for (int i = 0; i < MAX_JOBS; i++) {
         if (jobs[i].name == NULL) {
@@ -247,7 +254,7 @@ void orderJobs() {
             jobs[i].pid = jobs[i + 1].pid;
             jobs[i + 1].pid = 0;
 
-            jobPos = i + 1;
+            //jobPos = i + 1;
         }
     }
     printf("EndOfOrder\n");
