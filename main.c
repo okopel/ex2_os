@@ -2,9 +2,8 @@
  * Ex2
  * Ori Kopel
  * 205533151
+ * 3/2019
  */
-
-
 
 #include <stdbool.h>
 #include <sys/wait.h>
@@ -78,7 +77,6 @@ void runShell() {
 
 char *getInput() {
     char *input = malloc(sizeof(char) * MAX_CHARS);
-
     int maxLen = MAX_CHARS;
     if (!input) {
         perror("BAD MALLOC");
@@ -179,9 +177,9 @@ void parent(int index, bool wait, char *name, int pid) {
     addJob(index, strdup(name), pid);
     printf("PID=%d\n", pid);
     if (!wait) {
-        dontWait();
-    } else {
         waitToChild(pid);
+    } else {
+        dontWait();
     }
     removeJob(strdup(name), pid);
 }
