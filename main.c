@@ -51,7 +51,7 @@ char **getLexer(char *input);
  * @param lexerd the array
  * @return true if there is another function
  */
-bool sendToExe(int index, char **lexered);
+bool sendToExe(int index, char *input, char **lexered);
 
 /**
  * check for '&' - a sign of waiting and delete him.
@@ -73,7 +73,7 @@ void waitToChild(int pid);
  * @param name func name
  * @param pid of child
  */
-void parent(int index, bool wait, char *name, int pid);
+void parent(int index, bool wait, char *input, int pid);
 
 /**
  * child process
@@ -118,6 +118,7 @@ void cdFunc(char *path);
  */
 void exitFunc();
 
+
 /**
  * MAIN
  * @return 1 for success
@@ -134,8 +135,8 @@ void runShell() {
     int jobPos = 0;
     while (hasNext) {
         input = getInput();
-        lexered = getLexer(input);
-        hasNext = sendToExe(jobPos, lexered);
+        lexered = getLexer(strdup(input));
+        hasNext = sendToExe(jobPos, input, lexered);
         free(input);
         free(lexered);
         jobPos++;
@@ -195,7 +196,7 @@ char **getLexer(char *input) {
     return lexered;
 }
 
-bool sendToExe(int index, char **lexered) {
+bool sendToExe(int index, char *input, char **lexered) {
     if (lexered[0] == NULL) {
         return true;
     }
@@ -205,15 +206,18 @@ bool sendToExe(int index, char **lexered) {
         return true;
     } else if (strcmp(lexered[0], "exit") == 0) {
         return false;
-    }
+    } else if (strcmp(lexered[0], "cd") == 0) {
+        cdFunc(lexered[1]);
+        return true;
 
+    }
     pid_t pid;
     pid = fork();
     if (pid == -1) {//Error case
         perror("ERROR IN FORK\n");
         exit(1);
     } else if (pid > 0) {
-        parent(index, isWait, strdup(lexered[0]), pid);
+        parent(index, isWait, strdup(input), pid);
     } else if (pid == 0) {
         child(lexered);
         exit(1);
@@ -231,9 +235,11 @@ bool waitingCheck(char **lexered) {
     }
     if (lexered[i - 1][strlen(lexered[i - 1]) - 1] == WAITING_DELIMITER) {
         lexered[i - 1][strlen(lexered[i - 1]) - 1] = '\0';
+        if (strcmp(lexered[i - 1], "\0") == 0) {//case the & after space
+            lexered[i - 1] = NULL;
+        }
         return true;
     }
-
     return false;
 }
 
@@ -244,8 +250,11 @@ void waitToChild(int pid) {
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
 }
 
-void parent(int index, bool wait, char *name, int pid) {
-    addJob(index, strdup(name), pid);
+void parent(int index, bool wait, char *input, int pid) {
+    if (wait) {//delete the &
+        input[strlen(input) - 1] = '\0';
+    }
+    addJob(index, strdup(input), pid);
     printf("%d\n", pid);
     if (!wait) {
         waitToChild(pid);
@@ -254,11 +263,7 @@ void parent(int index, bool wait, char *name, int pid) {
 }
 
 void child(char **lexered) {
-    if (strcmp(lexered[0], "cd") == 0) {
-        if (lexered[1] != NULL) {
-            cdFunc(lexered[1]);
-        }
-    } else if (strcmp(lexered[0], "exit") == 0) {
+    if (strcmp(lexered[0], "exit") == 0) {
         exitFunc();
     } else if (execvp(lexered[0], lexered) == -1) {
         fprintf(stderr, "Error in system call\n");
@@ -287,7 +292,7 @@ void addJob(int jobPos, char *name, int pid) {
         jobs[jobPos].pid = pid;
     } else {
         int newJobPos = orderJobs();
-        addJob(newJobPos, strdup(name), pid);
+        addJob(newJobPos, name, pid);
     }
 }
 
@@ -331,6 +336,11 @@ int orderJobs() {
 }
 
 void cdFunc(char *path) {
+
+    if ((path == NULL) || (strcmp(path, "~") == 0)) {
+        chdir(getenv("HOME"));
+        return;
+    }
     int ret = chdir(path);
     if (ret) {
         fprintf(stderr, "Error in system call\n");
