@@ -48,7 +48,7 @@ char **getLexer(char *input);
 /**
  * execute the functions
  * @param index of our function
- * @param lexered the array
+ * @param lexerd the array
  * @return true if there is another function
  */
 bool sendToExe(int index, char **lexered);
@@ -67,7 +67,7 @@ bool waitingCheck(char **lexered);
 void waitToChild(int pid);
 
 /**
- * the parent proccess
+ * the parent process
  * @param index our function
  * @param wait should we wait to child?
  * @param name func name
@@ -76,13 +76,13 @@ void waitToChild(int pid);
 void parent(int index, bool wait, char *name, int pid);
 
 /**
- * child proccess
+ * child process
  * @param lexered the array
  */
 void child(char **lexered);
 
 /**
- * list of running jobes.
+ * list of running jobs.
  */
 void showJobs();
 
@@ -120,7 +120,7 @@ void exitFunc();
 
 /**
  * MAIN
- * @return 1 for succsess
+ * @return 1 for success
  */
 int main() {
     runShell();
