@@ -37,7 +37,7 @@ bool waitingCheck(char **lexered);
 
 void waitToChild(int pid);
 
-void dontWait();
+void dontWait(char *name, int pid);
 
 void parent(int index, bool wait, char *name, int pid);
 
@@ -159,8 +159,11 @@ bool waitingCheck(char **lexered) {
     return false;
 }
 
-void dontWait() {
+void dontWait(char *name, int pid) {
     printf("D-WAIT\n");
+    if (waitpid(pid, NULL, WNOHANG != 0)) {
+        removeJob(name, pid);
+    }
 }
 
 void waitToChild(int pid) {
@@ -178,10 +181,10 @@ void parent(int index, bool wait, char *name, int pid) {
     printf("PID=%d\n", pid);
     if (!wait) {
         waitToChild(pid);
+        removeJob(strdup(name), pid);
     } else {
-        dontWait();
+        dontWait(name, pid);
     }
-    removeJob(strdup(name), pid);
 }
 
 void child(char **lexered) {
