@@ -17,14 +17,14 @@
 #define MAX_WORD 8
 #define DELIMITER " "
 #define WAITING_DELIMITER '&'
-
-
+#define MAX_JOBS 50
 struct Task {
     char *name;
     int pid;
-    struct Task *next;
 };
 
+struct Task jobs[MAX_JOBS];
+int jobPos;
 
 void runShell();
 
@@ -44,16 +44,18 @@ void parent(bool wait, int pid);
 
 void child(char **lexered);
 
-struct Task *head = NULL;
-struct Task *p = NULL;
-
 void showJobs();
 
-void addJob(struct Task *t);
+void addJob(char *name, int pid);
 
-void removeJob(struct Task *newT);
+void removeJob(char *name, int pid);
+
+void orderJobs();
+
+void cdFunc();
 
 int main(int argc, char **argv) {
+    jobPos = 0;
     runShell();
     return 0;
 }
@@ -130,13 +132,12 @@ bool sendToExe(char **lexered) {
     pid = fork();
     if (pid == -1) {//Error case
         perror("ERROR IN FORK");
+    } else if (pid > 0) {
+        parent(isWait, pid);
     } else if (pid == 0) {
         printf("child\n");
         child(lexered);
         printf("endOfChild\n");
-    } else if (pid > 0) {
-        parent(isWait, pid);
-
     }
     return true;
 }
@@ -180,63 +181,78 @@ void parent(bool wait, int pid) {
 }
 
 void child(char **lexered) {
-    printf("ok");
-    struct Task *t;
-    t->name = lexered[0];
-    t->pid = getpid();
-    printf("ok2");
-    addJob(t);
-    printf("ok3");
-    if (lexered[0] == "jobs") {
-        printf("ok4");
-        removeJob(t);
-        printf("ok5");
+    addJob(lexered[0], getpid());
+    if (strcmp(lexered[0], "jobs") == 0) {
+        printf("JOBS!!\n");
+        removeJob(lexered[0], getpid());
         showJobs();
-        printf("ok6");
-        exit(4);
-
-    } else if (lexered[0] == "cd") {
-
+        //  exit(4);
+    } else if (strcmp(lexered[0], "cd") == 0) {
+        cdFunc();
     } else if (execvp(lexered[0], lexered) == -1) {
         perror("ERROR IN EXE");
     }
-    printf("ok7");
-    removeJob(t);
-    printf("ok8");
-    exit(3);
+    removeJob(lexered[0], getpid());
+    //exit(3);
 }
 
 void showJobs() {
-    struct Task *t = head;
-    if (t == NULL) {
-        printf("there isnt jobs");
-
+    printf("showJobs\n");
+    orderJobs();
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs[i].pid != 0) {
+            printf("%d)%d %s\n", i, jobs[i].pid, jobs[i].name);
+        }
     }
-    while (t != NULL) {
-        printf("%d %s\n", t->pid, t->name);
-        t = t->next;
+    printf("endOfShowJobs\n");
+}
+
+void addJob(char *name, int pid) {
+    if (jobPos < MAX_JOBS) {
+        jobs[jobPos].name = strdup(name);
+        jobs[jobPos].pid = pid;
+        jobPos++;
+        printf("JOB created in %d\n", jobPos);
+    } else {
+        orderJobs();
+        addJob(name, pid);
     }
 }
 
-void addJob(struct Task *newT) {
-    if (head == NULL) {
-        struct Task *t;
-        t->name = "";
-        t->pid = 0;
-        t->next = p;
-        head = t;
+void removeJob(char *name, int pid) {
+    return;
+    printf("REMOVE\n");
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs[i].pid = pid) {
+            jobs[i].name = "";
+            jobs[i].pid = 0;
+            printf("remove-V\n");
+            return;
+        }
     }
-    p->next = newT;
-    p = p->next;
+    printf("There isnt job to remove\n");
 }
 
-void removeJob(struct Task *newT) {
-    struct Task *t = head;
-    struct Task *dad = NULL;
-    while (t != NULL && newT != t) {
-        dad = t;
-        t = t->next;
+void orderJobs() {
+    return;
+    printf("orderJobs\n");
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs[i].name == NULL) {
+            continue;
+        }
+        if ((strcmp(jobs[i].name, "") == 0) && (strcmp(jobs[i + 1].name, "") != 0)) {
+            strcpy(jobs[i].name, jobs[i + 1].name);
+            strcpy(jobs[i + 1].name, "");
+
+            jobs[i].pid = jobs[i + 1].pid;
+            jobs[i + 1].pid = 0;
+
+            jobPos = i + 1;
+        }
     }
-    dad->next = t->next;
-    free(t);
+    printf("EndOfOrder\n");
+}
+
+void cdFunc() {
+    printf("CD\n");//todo
 }
