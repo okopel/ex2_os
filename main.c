@@ -166,43 +166,32 @@ bool waitingCheck(char **lexered) {
 
 void dontWait(char *name, int pid) {
     printf("DONT-WAIT-CASE %d\n", pid);
-    if (waitpid(pid, NULL, WNOHANG != 0)) {
-        printf("1\n");
-        removeJob(strdup(name), pid);
-        printf("2\n");
-    }
-    printf("3\n");
 
 }
 
 void waitToChild(int pid) {
-    printf("WAIT\n");
-    pid_t wpid;
+    //   printf("WAIT\n");
+    // pid_t wpid;
     int status;
 
     do {
-        wpid = waitpid(pid, &status, WUNTRACED);
+        /* wpid =*/ waitpid(pid, &status, WUNTRACED);
     } while (!WIFEXITED(status) && !WIFSIGNALED(status));
 }
 
 void parent(int index, bool wait, char *name, int pid) {
     addJob(index, strdup(name), pid);
-    printf("child PID=%d\n", pid);
+    //printf("child PID=%d\n", pid);
     if (!wait) {
         waitToChild(pid);
-        printf("!!\t");
         removeJob(strdup(name), pid);
     } else {
-        printf("??\t");
-        dontWait(name, pid);
+        // dontWait(name, pid);
     }
-    printf("_______________");
 }
 
 void child(char **lexered) {
-    if (strcmp(lexered[0], "jobs") == 0) {
-        showJobs();
-    } else if (strcmp(lexered[0], "cd") == 0) {
+    if (strcmp(lexered[0], "cd") == 0) {
         cdFunc();
     } else if (execvp(lexered[0], lexered) == -1) {
         perror("ERROR IN EXE\n");
@@ -214,9 +203,12 @@ void showJobs() {
         if (jobs[i].name == NULL || jobs[i].pid == 0) {
             continue;
         }
-
+        if (waitpid(jobs[i].pid, NULL, WNOHANG != 0)) {
+            removeJob(jobs[i].name, jobs[i].pid);
+            continue;
+        }
         if ((jobs[i].pid != 0) && (jobs[i].name != NULL)) {
-            printf("%d)%d %s\n", i, jobs[i].pid, jobs[i].name);
+            printf("%d %s\n", jobs[i].pid, jobs[i].name);
         }
     }
 }
@@ -236,7 +228,7 @@ void removeJob(char *name, int pid) {
         if (jobs[i].name == NULL) {
             continue;
         }
-        printf("%d)~%d~(%d,%d)\n", i, jobs[i].pid == pid, pid, jobs[i].pid);
+        //  printf("i:%d)~\tis eq:%d~\t(pid:%d,jobPid:%d)\n", i, jobs[i].pid == pid, pid, jobs[i].pid);
         if (jobs[i].pid == pid) {
             jobs[i].name = "";
             jobs[i].pid = 0;
