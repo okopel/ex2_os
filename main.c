@@ -150,7 +150,7 @@ void runShell() {
     int jobPos = 0;
     while (hasNext) {
         input = getInput();
-        lexered = getLexer(strdup(input));
+        lexered = getLexer(input);
         hasNext = sendToExe(jobPos, input, lexered);
         free(input);
         free(lexered);
@@ -194,7 +194,7 @@ char **getLexer(char *input) {
     int maxWord = MAX_WORD;
     int posi = 0;
     char *tmp = strtok(input, DELIMITER);
-
+    //free(input);
     while (tmp) {
         lexered[posi] = tmp;
         posi++;
@@ -220,11 +220,11 @@ bool sendToExe(int index, char *input, char **lexered) {
         showJobs();
         return true;
     } else if (strcmp(lexered[0], "exit") == 0) {
+        exitFunc();
         return false;
     } else if (strcmp(lexered[0], "cd") == 0) {
         cdFunc(input);
         return true;
-
     }
     pid_t pid;
     pid = fork();
@@ -232,7 +232,7 @@ bool sendToExe(int index, char *input, char **lexered) {
         perror("ERROR IN FORK\n");
         exit(1);
     } else if (pid > 0) {
-        parent(index, isWait, strdup(input), pid);
+        parent(index, isWait, input, pid);
     } else if (pid == 0) {
         child(lexered);
         exit(1);
@@ -269,7 +269,8 @@ void parent(int index, bool wait, char *input, int pid) {
     if (wait) {//delete the &
         input[strlen(input) - 1] = '\0';
     }
-    addJob(index, strdup(input), pid);
+    addJob(index, input, pid);
+    //free(input);
     printf("%d\n", pid);
     if (!wait) {
         waitToChild(pid);
@@ -278,9 +279,7 @@ void parent(int index, bool wait, char *input, int pid) {
 }
 
 void child(char **lexered) {
-    if (strcmp(lexered[0], "exit") == 0) {
-        exitFunc();
-    } else if (execvp(lexered[0], lexered) == -1) {
+    if (execvp(lexered[0], lexered) == -1) {
         fprintf(stderr, "Error in system call\n");
     }
 }
@@ -318,7 +317,8 @@ void removeJob(int pid) {
             continue;
         }
         if (jobs[i].pid == pid) {
-            jobs[i].name = "";
+            free(jobs[i].name);
+//            jobs[i].name = "";
             jobs[i].pid = 0;
             return;
         }
@@ -326,7 +326,6 @@ void removeJob(int pid) {
 }
 
 int orderJobs() {
-
     int i;
     for (i = 0; i < pos; i++) {
         if (jobs[i].name == NULL) {
@@ -351,6 +350,7 @@ int orderJobs() {
 }
 
 void cdFunc(char *path) {
+    printf("%d\n", getpid());
     path = deleteCD(path);
     if (path[0] == '-') {
         char c[MAX_CHARS];
@@ -388,7 +388,6 @@ char *deleteCD(char *path) {
 }
 
 char *reParse(char *path) {
-    //printf(":%s\n", path);
     if (path[0] == '"') {
         path++;
         int i = 0;
@@ -400,7 +399,6 @@ char *reParse(char *path) {
         }
         path[i] = '\0';
     }
-    //printf("::%s\n", path);
     if (strlen(path) == 0 || path[0] == '\0') {
         return NULL;
     }
@@ -408,5 +406,5 @@ char *reParse(char *path) {
 }
 
 void exitFunc() {
-    exit(1);
+    printf("%d\n", getpid());
 }
