@@ -27,6 +27,7 @@ struct Task {
 struct Task jobs[MAX_JOBS];
 
 int pos = MAX_JOBS;
+char PATH[MAX_CHARS];
 
 /**
  * Running the shell
@@ -124,7 +125,7 @@ char *reParse(char *path);
  * delete CD from the path
  * @param path the path
  */
-void deleteCD(char *path);
+char *deleteCD(char *path);
 
 /**
  * Exit func
@@ -137,6 +138,7 @@ void exitFunc();
  * @return 1 for success
  */
 int main() {
+    getcwd(PATH, sizeof(PATH));
     runShell();
     return 0;
 }
@@ -349,38 +351,58 @@ int orderJobs() {
 }
 
 void cdFunc(char *path) {
-    deleteCD(path);
-    if ((path == NULL) || (strcmp(path, "~") == 0)) {
+    path = deleteCD(path);
+    if (path[0] == '-') {
+        char c[MAX_CHARS];
+        getcwd(c, MAX_CHARS);
+        chdir(PATH);
+        strcpy(PATH, c);
+
+        return;
+    } else if ((path == NULL) || strlen(path) == 0 || (strcmp(path, "~") == 0)) {
+        getcwd(PATH, sizeof(PATH));
         chdir(getenv("HOME"));
         return;
     }
+    getcwd(PATH, sizeof(PATH));
     path = reParse(path);
     int ret = chdir(path);
     if (ret) {
-        //cdFuncWithPos(path);
         fprintf(stderr, "Error in system call\n");
     }
 }
 
-void deleteCD(char *path) {
-    char *newPath = "";
+char *deleteCD(char *path) {
     int i = 0;
+    while (path[i] == ' ') {//delete spaces
+        path++;
+    }
+    if (path[0] == 'c') {//delete cd
+        path += 2;
+    }
+    i = 0;
     while (path[i] == ' ') {
-        i++;
+        path++;
     }
-    if (path[i] == 'c' && path[i + 1] == 'd') {
-        path[i] = ' ';
-        path[i + 1] = ' ';
-    }
-
+    return path;
 }
 
 char *reParse(char *path) {
-    int i;
-    for (i = 0; i < strlen(path); i++) {
-        if (path[i] == '"') {
-            path[i] = ' ';
+    //printf(":%s\n", path);
+    if (path[0] == '"') {
+        path++;
+        int i = 0;
+        while (path[i] != '"') {
+            i++;
+            if (i == MAX_CHARS) {
+                break;
+            }
         }
+        path[i] = '\0';
+    }
+    //printf("::%s\n", path);
+    if (strlen(path) == 0 || path[0] == '\0') {
+        return NULL;
     }
     return path;
 }
