@@ -114,6 +114,19 @@ int orderJobs();
 void cdFunc(char *path);
 
 /**
+ *  Reparse the path to CD
+ * @param path the old path
+ * @return the new path witouht ""
+ */
+char *reParse(char *path);
+
+/**
+ * delete CD from the path
+ * @param path the path
+ */
+void deleteCD(char *path);
+
+/**
  * Exit func
  */
 void exitFunc();
@@ -151,7 +164,7 @@ char *getInput() {
     }
     char c;
     int posi = 0;
-    printf(">");
+    printf("> ");
     while (true) {
         c = getchar();
         if (c == '\n' || c == EOF) {
@@ -207,7 +220,7 @@ bool sendToExe(int index, char *input, char **lexered) {
     } else if (strcmp(lexered[0], "exit") == 0) {
         return false;
     } else if (strcmp(lexered[0], "cd") == 0) {
-        cdFunc(lexered[1]);
+        cdFunc(input);
         return true;
 
     }
@@ -336,15 +349,40 @@ int orderJobs() {
 }
 
 void cdFunc(char *path) {
-
+    deleteCD(path);
     if ((path == NULL) || (strcmp(path, "~") == 0)) {
         chdir(getenv("HOME"));
         return;
     }
+    path = reParse(path);
     int ret = chdir(path);
     if (ret) {
+        //cdFuncWithPos(path);
         fprintf(stderr, "Error in system call\n");
     }
+}
+
+void deleteCD(char *path) {
+    char *newPath = "";
+    int i = 0;
+    while (path[i] == ' ') {
+        i++;
+    }
+    if (path[i] == 'c' && path[i + 1] == 'd') {
+        path[i] = ' ';
+        path[i + 1] = ' ';
+    }
+
+}
+
+char *reParse(char *path) {
+    int i;
+    for (i = 0; i < strlen(path); i++) {
+        if (path[i] == '"') {
+            path[i] = ' ';
+        }
+    }
+    return path;
 }
 
 void exitFunc() {
