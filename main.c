@@ -270,7 +270,6 @@ void parent(int index, bool wait, char *input, int pid) {
         input[strlen(input) - 1] = '\0';
     }
     addJob(index, input, pid);
-    //free(input);
     printf("%d\n", pid);
     if (!wait) {
         waitToChild(pid);
@@ -318,7 +317,6 @@ void removeJob(int pid) {
         }
         if (jobs[i].pid == pid) {
             free(jobs[i].name);
-//            jobs[i].name = "";
             jobs[i].pid = 0;
             return;
         }
