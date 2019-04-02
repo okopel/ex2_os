@@ -103,6 +103,13 @@ void addJob(int jobPos, char *name, int pid);
 void removeJob(int pid);
 
 /**
+ * Delete &
+ * @param input input
+ * @return without &
+ */
+char *delteAmp(char *input);
+
+/**
  * order the jobs after some deletes.
  * @return new position after ordering.
  */
@@ -113,6 +120,11 @@ int orderJobs();
  * @param path the path to CD
  */
 void cdFunc(char *path);
+
+/**
+ * free al jobs before exit
+ */
+void freeAllJobs();
 
 /**
  *  Reparse the path to CD
@@ -153,6 +165,11 @@ void runShell() {
         lexered = getLexer(input);
         hasNext = sendToExe(jobPos, input, lexered);
         free(input);
+        int i = 0;
+        while (lexered[i] != NULL) {
+            free(lexered[i]);
+            i++;
+        }
         free(lexered);
         jobPos++;
     }
@@ -187,16 +204,17 @@ char *getInput() {
 }
 
 char **getLexer(char *input) {
+    char *inputCpy = malloc(sizeof(input) + 1);
+    strcpy(inputCpy, input);
     char **lexered = malloc(sizeof(char) * MAX_WORD);
     if (!lexered) {
         perror("BAD MALLOC IN LEXER");
     }
     int maxWord = MAX_WORD;
     int posi = 0;
-    char *tmp = strtok(input, DELIMITER);
-    //free(input);
+    char *tmp = strtok(inputCpy, DELIMITER);
     while (tmp) {
-        lexered[posi] = tmp;
+        lexered[posi] = strdup(tmp);
         posi++;
         if (posi == maxWord) {
             maxWord += MAX_WORD;
@@ -208,6 +226,7 @@ char **getLexer(char *input) {
         tmp = strtok(NULL, DELIMITER);
     }
     lexered[posi] = NULL;
+    free(inputCpy);
     return lexered;
 }
 
@@ -266,11 +285,11 @@ void waitToChild(int pid) {
 }
 
 void parent(int index, bool wait, char *input, int pid) {
+    printf("%d\n", pid);
     if (wait) {//delete the &
-        input[strlen(input) - 1] = '\0';
+        input[strlen(input)] = '\0';
     }
     addJob(index, input, pid);
-    printf("%d\n", pid);
     if (!wait) {
         waitToChild(pid);
         removeJob(pid);
@@ -405,4 +424,14 @@ char *reParse(char *path) {
 
 void exitFunc() {
     printf("%d\n", getpid());
+    freeAllJobs();
+}
+
+void freeAllJobs() {
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (jobs[i].name != NULL && jobs[i].pid != 0) {
+            free(jobs[i].name);
+            jobs[i].pid = 0;
+        }
+    }
 }
